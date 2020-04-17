@@ -10,7 +10,6 @@ from tqdm import tqdm
 from data import MNISTM
 from models import Net
 
-
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 

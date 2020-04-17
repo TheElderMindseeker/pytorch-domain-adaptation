@@ -15,8 +15,7 @@ from tqdm import tqdm, trange
 import config
 from data import MNISTM
 from models import Net
-from utils import loop_iterable, set_requires_grad, GrayscaleToRgb
-
+from utils import GrayscaleToRgb, loop_iterable, set_requires_grad
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
