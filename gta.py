@@ -7,6 +7,7 @@ import torch
 from PIL import Image
 from torch.utils.data import DataLoader, Dataset
 from torch.utils.data.sampler import SubsetRandomSampler
+from torchvision.datasets import ImageFolder
 from torchvision.transforms import Compose, Resize, ToTensor
 
 
@@ -60,8 +61,7 @@ class GTADataset(Dataset):
 
 
 def create_gta_dataloaders(dataset_path, transform=ToTensor(), batch_size=16):
-    dataset = GTADataset('./optimized_small_dataset.tar.gz',
-                         transform=transform)
+    dataset = ImageFolder(dataset_path, transform=transform)
     shuffled_indices = np.random.permutation(len(dataset))
     train_idx = shuffled_indices[:int(0.8 * len(dataset))]
     val_idx = shuffled_indices[int(0.8 * len(dataset)):]

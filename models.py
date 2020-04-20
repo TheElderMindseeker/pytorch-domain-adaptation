@@ -43,13 +43,7 @@ class GTANet(nn.Module):
         )
 
         self.classifier = nn.Sequential(
-            nn.Linear(952, 256),
-            nn.ReLU(),
-            nn.Dropout(),
-            nn.Linear(256, 64),
-            nn.ReLU(),
-            nn.Dropout(),
-            nn.Linear(64, 9),
+            nn.Linear(4375, 9),
             nn.ReLU(),
             nn.Dropout(),
         )
@@ -74,5 +68,22 @@ def GTARes18Net(num_classes: int):
 
     num_ftrs = model.fc.in_features
     model.fc = nn.Linear(num_ftrs, num_classes)
+
+    return model
+
+
+def GTAVGG11Net(num_classes: int):
+    """Create a model with VGG-11 as pretrained feature extractor
+
+    Args:
+        num_classes: Number of classes in dataset.
+
+    """
+    model = models.vgg11_bn(pretrained=True)
+    for param in model.parameters():
+        param.requires_grad = False
+
+    num_ftrs = model.classifier[6].in_features
+    model.classifier[6] = nn.Linear(num_ftrs, num_classes)
 
     return model

@@ -7,12 +7,12 @@ from torch.utils.data import DataLoader
 from torch.utils.data.sampler import SubsetRandomSampler
 from torchvision.datasets import MNIST
 from torchvision.transforms import (Compose, Normalize, RandomCrop, Resize,
-                                    ToTensor)
+                                    ToTensor, RandomHorizontalFlip)
 from tqdm import tqdm
 
 import config
 from gta import create_gta_dataloaders
-from models import GTANet, GTARes18Net
+from models import GTANet, GTARes18Net, GTAVGG11Net
 from utils import GrayscaleToRgb
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -68,21 +68,45 @@ def main(args):
 
     if args.model == 'gta':
         train_loader, val_loader = create_gta_dataloaders(
-            './optimized_small_dataset.tar.gz')
+            './data',
+            transform=Compose([
+                Resize((398, 224)),
+                RandomCrop(224),
+                RandomHorizontalFlip(),
+                ToTensor(),
+                Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+            ]))
         model = GTANet().to(device)
         model_path = './trained_models/gta_source.pt'
         params_to_update = model.parameters()
     elif args.model == 'gta-res':
         train_loader, val_loader = create_gta_dataloaders(
-            './optimized_pfe_dataset.tar.gz',
+            './data',
             transform=Compose([
                 Resize((398, 224)),
                 RandomCrop(224),
+                RandomHorizontalFlip(),
                 ToTensor(),
                 Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
             ]))
         model = GTARes18Net(9).to(device)
         model_path = './trained_models/gta_res_source.pt'
+        params_to_update = list()
+        for param in model.parameters():
+            if param.requires_grad:
+                params_to_update.append(param)
+    elif args.model == 'gta-vgg':
+        train_loader, val_loader = create_gta_dataloaders(
+            './data',
+            transform=Compose([
+                Resize((398, 224)),
+                RandomCrop(224),
+                RandomHorizontalFlip(),
+                ToTensor(),
+                Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+            ]))
+        model = GTAVGG11Net(9).to(device)
+        model_path = './trained_models/gta_vgg_source.pt'
         params_to_update = list()
         for param in model.parameters():
             if param.requires_grad:
@@ -94,9 +118,9 @@ def main(args):
         model.load_state_dict(torch.load(model_path))
 
     optim = torch.optim.Adam(params_to_update)
-    lr_schedule = torch.optim.lr_scheduler.ReduceLROnPlateau(optim,
-                                                             patience=1,
-                                                             verbose=True)
+    lr_schedule = torch.optim.lr_scheduler.StepLR(optim,
+                                                  step_size=1,
+                                                  gamma=0.9)
     criterion = torch.nn.CrossEntropyLoss()
 
     best_accuracy = 0
