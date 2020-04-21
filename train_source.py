@@ -6,8 +6,8 @@ import torch
 from torch.utils.data import DataLoader
 from torch.utils.data.sampler import SubsetRandomSampler
 from torchvision.datasets import MNIST
-from torchvision.transforms import (Compose, Normalize, RandomCrop, Resize,
-                                    ToTensor, RandomHorizontalFlip)
+from torchvision.transforms import (Compose, Normalize, RandomCrop,
+                                    RandomHorizontalFlip, Resize, ToTensor)
 from tqdm import tqdm
 
 import config
@@ -114,13 +114,13 @@ def main(args):
     else:
         raise ValueError(f'Unknown model type {args.model}')
 
-    if os.path.exists(model_path):
-        model.load_state_dict(torch.load(model_path))
+    # if os.path.exists(model_path):
+    #     model.load_state_dict(torch.load(model_path))
 
     optim = torch.optim.Adam(params_to_update)
     lr_schedule = torch.optim.lr_scheduler.StepLR(optim,
-                                                  step_size=1,
-                                                  gamma=0.9)
+                                                  step_size=10,
+                                                  gamma=0.1)
     criterion = torch.nn.CrossEntropyLoss()
 
     best_accuracy = 0
@@ -151,9 +151,10 @@ def main(args):
 
 
 if __name__ == '__main__':
-    arg_parser = argparse.ArgumentParser(description='Train a network on MNIST')
-    arg_parser.add_argument('--batch-size', type=int, default=16)
-    arg_parser.add_argument('--epochs', type=int, default=30)
+    arg_parser = argparse.ArgumentParser(
+        description='Train a network on source dataset')
+    arg_parser.add_argument('--batch-size', type=int, default=64)
+    arg_parser.add_argument('--epochs', type=int, default=64)
     arg_parser.add_argument('--model', type=str, default='gta')
     args = arg_parser.parse_args()
     main(args)

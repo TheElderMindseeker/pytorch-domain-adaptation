@@ -9,41 +9,104 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 from torch.utils.data import DataLoader
-from torchvision.datasets import MNIST
-from torchvision.transforms import Compose, ToTensor
+from torchvision.datasets import MNIST, ImageFolder
+from torchvision.transforms import (Compose, Normalize, RandomCrop,
+                                    RandomHorizontalFlip, Resize, ToTensor)
 from tqdm import tqdm
 
 import config
 from data import MNISTM
-from models import Net
+from models import GTANet, GTARes18Net, GTAVGG11Net
 from utils import GradientReversal, GrayscaleToRgb
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 def main(args):
-    model = Net().to(device)
-    model.load_state_dict(torch.load(args.MODEL_FILE))
-    feature_extractor = model.feature_extractor
-    clf = model.classifier
+    if args.model == 'gta':
+        model = GTANet().to(device)
+        feature_extractor = model.feature_extractor
+        clf = model.classifier
+        model_file = './trained_models/gta_source.pt'
+        out_file = './trained_models/gta.pt'
+        out_ftrs = 4375
 
-    discriminator = nn.Sequential(GradientReversal(), nn.Linear(320, 50),
-                                  nn.ReLU(), nn.Linear(50, 20), nn.ReLU(),
-                                  nn.Linear(20, 1)).to(device)
+    elif args.model == 'gta-res':
+        model = GTARes18Net(9).to(device)
+
+        def feature_extractor(x):
+            x = model.conv1(x)
+            x = model.bn1(x)
+            x = model.relu(x)
+            x = model.maxpool(x)
+
+            x = model.layer1(x)
+            x = model.layer2(x)
+            x = model.layer3(x)
+            x = model.layer4(x)
+
+            x = model.avgpool(x)
+            x = torch.flatten(x, 1)
+            return x
+
+        clf = model.fc
+        model_file = './trained_models/gta_res_source.pt'
+        out_file = './trained_models/gta_res.pt'
+        out_ftrs = model.fc.in_features
+
+    elif args.model == 'gta-vgg':
+        model = GTAVGG11Net(9).to(device)
+
+        def feature_extractor(x):
+            x = model.features(x)
+            x = model.avgpool(x)
+            x = torch.flatten(x, 1)
+            return x
+
+        clf = model.classifier
+        model_file = './trained_models/gta_vgg_source.pt'
+        out_file = './trained_models/gta_vgg.pt'
+        out_ftrs = model.classifier[0].in_features  # should be 512 * 7 * 7
+
+    else:
+        raise ValueError(f'Unknown model type {args.model}')
+
+    model.load_state_dict(torch.load(model_file))
+
+    discriminator = nn.Sequential(
+        GradientReversal(),
+        nn.Linear(out_ftrs, 64),
+        nn.ReLU(),
+        nn.Linear(64, 1),
+    ).to(device)
 
     half_batch = args.batch_size // 2
-    source_dataset = MNIST(config.DATA_DIR / 'mnist',
-                           train=True,
-                           download=True,
-                           transform=Compose([GrayscaleToRgb(),
-                                              ToTensor()]))
+
+    source_dataset = ImageFolder('./data',
+                                 transform=Compose([
+                                     Resize((398, 224)),
+                                     RandomCrop(224),
+                                     RandomHorizontalFlip(),
+                                     ToTensor(),
+                                     Normalize([0.485, 0.456, 0.406],
+                                               [0.229, 0.224, 0.225]),
+                                 ]))
     source_loader = DataLoader(source_dataset,
                                batch_size=half_batch,
                                shuffle=True,
                                num_workers=1,
                                pin_memory=True)
 
-    target_dataset = MNISTM(train=False)
+    target_dataset = ImageFolder('./t_data',
+                                 transform=Compose([
+                                     RandomCrop(224,
+                                                pad_if_needed=True,
+                                                padding_mode='reflect'),
+                                     RandomHorizontalFlip(),
+                                     ToTensor(),
+                                     Normalize([0.485, 0.456, 0.406],
+                                               [0.229, 0.224, 0.225]),
+                                 ]))
     target_loader = DataLoader(target_dataset,
                                batch_size=half_batch,
                                shuffle=True,
@@ -91,14 +154,17 @@ def main(args):
         tqdm.write(f'EPOCH {epoch:03d}: domain_loss={mean_loss:.4f}, '
                    f'source_accuracy={mean_accuracy:.4f}')
 
-        torch.save(model.state_dict(), 'trained_models/revgrad.pt')
+        torch.save(model.state_dict(), out_file)
 
 
 if __name__ == '__main__':
     arg_parser = argparse.ArgumentParser(
         description='Domain adaptation using RevGrad')
-    arg_parser.add_argument('MODEL_FILE', help='A model in trained_models')
+    arg_parser.add_argument('--model',
+                            type=str,
+                            help='A model in trained_models',
+                            default='gta')
     arg_parser.add_argument('--batch-size', type=int, default=64)
-    arg_parser.add_argument('--epochs', type=int, default=15)
+    arg_parser.add_argument('--epochs', type=int, default=16)
     args = arg_parser.parse_args()
     main(args)

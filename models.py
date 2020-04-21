@@ -68,7 +68,6 @@ def GTARes18Net(num_classes: int):
 
     num_ftrs = model.fc.in_features
     model.fc = nn.Linear(num_ftrs, num_classes)
-
     return model
 
 
