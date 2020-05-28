@@ -28,44 +28,23 @@ def main(args):
         feature_extractor = model.feature_extractor
         clf = model.classifier
         model_file = './trained_models/gta_source.pt'
-        out_file = './trained_models/gta.pt'
+        out_file = './trained_models/gta_rg.pt'
         out_ftrs = 4375
 
     elif args.model == 'gta-res':
-        model = GTARes18Net(9).to(device)
-
-        def feature_extractor(x):
-            x = model.conv1(x)
-            x = model.bn1(x)
-            x = model.relu(x)
-            x = model.maxpool(x)
-
-            x = model.layer1(x)
-            x = model.layer2(x)
-            x = model.layer3(x)
-            x = model.layer4(x)
-
-            x = model.avgpool(x)
-            x = torch.flatten(x, 1)
-            return x
-
+        model = GTARes18Net(9, pretrained=False).to(device)
+        feature_extractor = model.feature_extractor
         clf = model.fc
         model_file = './trained_models/gta_res_source.pt'
-        out_file = './trained_models/gta_res.pt'
+        out_file = './trained_models/gta_res_rg.pt'
         out_ftrs = model.fc.in_features
 
     elif args.model == 'gta-vgg':
-        model = GTAVGG11Net(9).to(device)
-
-        def feature_extractor(x):
-            x = model.features(x)
-            x = model.avgpool(x)
-            x = torch.flatten(x, 1)
-            return x
-
+        model = GTAVGG11Net(9, pretrained=False).to(device)
+        feature_extractor = model.feature_extractor
         clf = model.classifier
         model_file = './trained_models/gta_vgg_source.pt'
-        out_file = './trained_models/gta_vgg.pt'
+        out_file = './trained_models/gta_vgg_rg.pt'
         out_ftrs = model.classifier[0].in_features  # should be 512 * 7 * 7
 
     else:
@@ -82,7 +61,7 @@ def main(args):
 
     half_batch = args.batch_size // 2
 
-    source_dataset = ImageFolder('./data',
+    target_dataset = ImageFolder('./data',
                                  transform=Compose([
                                      Resize((398, 224)),
                                      RandomCrop(224),
@@ -91,13 +70,13 @@ def main(args):
                                      Normalize([0.485, 0.456, 0.406],
                                                [0.229, 0.224, 0.225]),
                                  ]))
-    source_loader = DataLoader(source_dataset,
+    target_loader = DataLoader(target_dataset,
                                batch_size=half_batch,
                                shuffle=True,
                                num_workers=1,
                                pin_memory=True)
 
-    target_dataset = ImageFolder('./t_data',
+    source_dataset = ImageFolder('./t_data',
                                  transform=Compose([
                                      RandomCrop(224,
                                                 pad_if_needed=True,
@@ -107,7 +86,7 @@ def main(args):
                                      Normalize([0.485, 0.456, 0.406],
                                                [0.229, 0.224, 0.225]),
                                  ]))
-    target_loader = DataLoader(target_dataset,
+    source_loader = DataLoader(source_dataset,
                                batch_size=half_batch,
                                shuffle=True,
                                num_workers=1,

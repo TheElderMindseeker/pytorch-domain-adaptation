@@ -89,8 +89,8 @@ def main(args):
                 ToTensor(),
                 Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
             ]))
-        model = GTARes18Net(9).to(device)
-        model_path = './trained_models/gta_res_source.pt'
+        model = GTARes18Net(9, pretrained=False).to(device)
+        model_path = './trained_models/gta_res_scratch.pt'
         params_to_update = list()
         for param in model.parameters():
             if param.requires_grad:
@@ -105,17 +105,14 @@ def main(args):
                 ToTensor(),
                 Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
             ]))
-        model = GTAVGG11Net(9).to(device)
-        model_path = './trained_models/gta_vgg_source.pt'
+        model = GTAVGG11Net(9, pretrained=False).to(device)
+        model_path = './trained_models/gta_vgg_scratch.pt'
         params_to_update = list()
         for param in model.parameters():
             if param.requires_grad:
                 params_to_update.append(param)
     else:
         raise ValueError(f'Unknown model type {args.model}')
-
-    # if os.path.exists(model_path):
-    #     model.load_state_dict(torch.load(model_path))
 
     optim = torch.optim.Adam(params_to_update)
     lr_schedule = torch.optim.lr_scheduler.StepLR(optim,
