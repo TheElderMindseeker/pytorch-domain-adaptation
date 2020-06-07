@@ -12,7 +12,7 @@ from torchvision.transforms import (Compose, Normalize, RandomCrop, Resize,
 from models import GTARes18Net
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-sample_video = './sample_video_3.mp4'
+sample_video = './sample_video.mp4'
 
 video_stream = cv2.VideoCapture(sample_video)
 print('Approximate frame count:', video_stream.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -77,7 +77,7 @@ piechart_bounds = (
     (frame_size[0] - 20, 80),
 )
 output_video = cv2.VideoWriter(
-    './output_video_3.avi',
+    './output_video.avi',
     cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'),
     int(fps),
     frame_size,

@@ -52,10 +52,11 @@ def main(args):
     else:
         raise ValueError(f'Unknown model type {args.model}')
 
-    dataset = ImageFolder('./data',
+    dataset = ImageFolder('./t_data',
                           transform=Compose([
-                              Resize((398, 224)),
-                              RandomCrop(224),
+                              RandomCrop(224,
+                                         pad_if_needed=True,
+                                         padding_mode='reflect'),
                               ToTensor(),
                               Normalize([0.485, 0.456, 0.406],
                                         [0.229, 0.224, 0.225]),
